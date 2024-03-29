@@ -2,6 +2,9 @@ import { createBrowserRouter, redirect } from "react-router-dom";
 
 import { Signin } from "@/pages/singin";
 
+import { Root } from "./pages/root";
+import { Signup } from "./pages/signup";
+
 export const routes = createBrowserRouter([
 	{
 		path: "/",
@@ -9,6 +12,22 @@ export const routes = createBrowserRouter([
 	},
 	{
 		path: "/signin",
-		element: <Signin />,
+		element: <Root />,
+		children: [
+			{
+				path: "/signin",
+				element: <Signin />,
+			},
+		],
+	},
+	{
+		path: "/signup",
+		element: <Root />,
+		children: [
+			{
+				path: "/signup",
+				element: <Signup />,
+			},
+		],
 	},
 ]);

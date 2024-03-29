@@ -76,9 +76,17 @@
   }
 
   .presenter {
-    height: 450px;
-    width: 500px;
+    height: 28.125rem;
+    width: 31.25rem;
     background: linear-gradient(to bottom, rgba(0, 0, 0, .7) 20%, rgba(0, 0, 0, 0)), url('/dashskins.jpeg');
+  }
+
+  @media (max-width: 916px) {
+    .presenter {
+      height: 300px;
+      width: 350px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, .7) 20%, rgba(0, 0, 0, 0)), url('/dashskins.jpeg') 0 -0.9375rem;
+    }
   }
 }
 
