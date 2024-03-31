@@ -4,7 +4,7 @@ import {
 	ChevronsLeft,
 	ChevronsRight,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
@@ -19,7 +19,7 @@ export function Pagination({
 	itemsPerPage,
 	totalOfItems,
 }: IPaginationPageProps) {
-	const router = useNavigate();
+	const [, searchParams] = useSearchParams();
 
 	const totalOfPages = Math.ceil(totalOfItems / itemsPerPage);
 	const userAreOnLastPage = currentPage === totalOfPages;
@@ -35,7 +35,7 @@ export function Pagination({
 
 		url.searchParams.set("page", String(page));
 
-		router(`/dashboard?${url.searchParams.toString()}`);
+		searchParams(url.searchParams.toString());
 	}
 	function goToNextPage() {
 		const url = new URL(window.location.href);
@@ -44,7 +44,7 @@ export function Pagination({
 
 		url.searchParams.set("page", String(page));
 
-		router(`/dashboard?${url.searchParams.toString()}`);
+		searchParams(url.searchParams.toString());
 	}
 
 	function goToPreviousPage() {
@@ -54,7 +54,7 @@ export function Pagination({
 
 		url.searchParams.set("page", String(page));
 
-		router(`/dashboard?${url.searchParams.toString()}`);
+		searchParams(url.searchParams.toString());
 	}
 
 	function goToFirstPagePage() {
@@ -64,7 +64,7 @@ export function Pagination({
 
 		url.searchParams.set("page", String(page));
 
-		router(`/dashboard?${url.searchParams.toString()}`);
+		searchParams(url.searchParams.toString());
 	}
 
 	return (

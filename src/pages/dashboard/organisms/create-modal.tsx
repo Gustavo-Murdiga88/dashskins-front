@@ -1,6 +1,7 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
+import { DialogClose } from "@radix-ui/react-dialog";
 import { Label } from "@radix-ui/react-label";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, ElementRef, ReactNode, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,34 +29,23 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/axios";
 
-import { resolver, SchemeUpdatedUser } from "../validation/update-user";
+import { resolver, SchemeCreateUser } from "../validation/create-user";
 
 interface IModalEditProps {
-	open: boolean;
-	user: UserProps;
-	setOpen: (open: boolean) => void;
-	callback: ({ user }: { user: UserProps }) => void;
+	children: ReactNode;
+	callback?: ({ user }: { user: UserProps }) => void;
 }
-export function ModalEditUser({
-	open,
-	setOpen,
-	user,
-	callback,
-}: IModalEditProps) {
-	const [avatarURL, setAvatarURL] = useState(user.avatar.url ?? "");
+export function CreateModal({ children, callback }: IModalEditProps) {
+	const triggerRef = useRef<ElementRef<typeof DialogTrigger>>(null);
+
+	const [avatarURL, setAvatarURL] = useState("");
 	const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
 
-	const form = useForm<SchemeUpdatedUser>({
+	const form = useForm<SchemeCreateUser>({
 		resolver,
-		defaultValues: {
-			name: user.name,
-			age: user.age,
-			email: user.email,
-			role: user.role,
-		},
 	});
 
-	const { register } = form;
+	const { register, setValue } = form;
 
 	async function sendAvatar(userId: string) {
 		const data = new FormData();
@@ -66,6 +57,7 @@ export function ModalEditUser({
 				`/user/avatar/${userId}`,
 				data,
 			);
+
 			return {
 				url: `http://localhost:3000/${avatarCreated.data.url}`,
 				id: avatarCreated.data.id,
@@ -75,6 +67,79 @@ export function ModalEditUser({
 			return null;
 		}
 	}
+
+	const handleSubmit = form.handleSubmit(
+		async ({ age, email, name, role, password }) => {
+			try {
+				const userCreated = await api.post<{ user: UserProps }>("/user", {
+					email,
+					name,
+					age,
+					role,
+					password,
+				});
+
+				if (userCreated.status !== 201) {
+					return;
+				}
+
+				if (avatarFile === undefined) {
+					callback?.({
+						user: {
+							age,
+							email,
+							name,
+							role,
+							id: userCreated.data.user.id,
+							avatar: {
+								id: userCreated.data.user.avatar.id,
+								userId: userCreated.data.user.id,
+								url:
+									userCreated.data.user.avatar.url || "http://localhost:3000",
+							},
+						},
+					});
+					triggerRef.current?.click();
+					return;
+				}
+
+				const { id } = userCreated.data.user;
+				const avatarCreated = await sendAvatar(id);
+
+				triggerRef.current?.click();
+
+				toast.success("Usuários criado com sucesso");
+				form.reset({
+					age: "",
+					email: "",
+					name: "",
+					password: "",
+					role: "",
+				} as never);
+
+				URL.revokeObjectURL(avatarURL);
+				setAvatarURL("");
+				setAvatarFile(undefined);
+				callback?.({
+					user: {
+						age,
+						email,
+						name,
+						role,
+						id: userCreated.data.user.id,
+						avatar: {
+							id: avatarCreated?.id || userCreated.data.user.avatar.id,
+							userId: userCreated.data.user.id,
+							url: avatarCreated?.url || userCreated.data.user.avatar.url,
+						},
+					},
+				});
+				triggerRef.current?.click();
+			} catch (error) {
+				toast.error("Erro ao criar o novo usuário");
+			}
+		},
+	);
 
 	function handleChangeFile(e: ChangeEvent<HTMLInputElement>) {
 		const file = e.currentTarget.files?.[0];
@@ -88,60 +153,11 @@ export function ModalEditUser({
 		setAvatarFile(file);
 	}
 
-	const handleSubmit = form.handleSubmit(async ({ age, email, name, role }) => {
-		try {
-			const userEdited = await api.put<{ message: string }>("/user", {
-				id: user.id,
-				email,
-				name,
-				age,
-				role,
-			});
-
-			toast.success(userEdited.data.message);
-			setOpen(false);
-
-			if (avatarFile === undefined) {
-				callback?.({
-					user: {
-						age,
-						email,
-						id: user.id,
-						avatar: user.avatar,
-						name,
-						role,
-					},
-				});
-				return;
-			}
-
-			const avatarCreated = await sendAvatar(user.id);
-
-			URL.revokeObjectURL(avatarURL);
-			setAvatarURL("");
-			setAvatarFile(undefined);
-			callback?.({
-				user: {
-					age,
-					email,
-					name,
-					role,
-					id: user.id,
-					avatar: {
-						...user.avatar,
-						url: avatarCreated?.url || user.avatar.url,
-						id: avatarCreated?.id || user.avatar.id,
-						userId: user.id,
-					},
-				},
-			});
-		} catch (error) {
-			toast.error("Erro ao atualizar o usuário");
-		}
-	});
-
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog>
+			<DialogTrigger asChild ref={triggerRef}>
+				{children}
+			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Edição de usuários</DialogTitle>
@@ -150,15 +166,10 @@ export function ModalEditUser({
 					</DialogDescription>
 				</DialogHeader>
 				<form className="flex flex-col gap-4 text-xs">
-					<Label htmlFor="avatar">
+					<Label htmlFor="avatar" className="h-32 w-32 mx-auto rounded-full">
 						<Avatar
-							data-disabled={user.avatar.url !== "http://localhost:3000/"}
-							className="data-[disabled=true]:cursor-not-allowed h-32 w-32 mx-auto flex items-center justify-center border rounded-full hover:cursor-pointer hover:bg-muted"
-							title={
-								user.avatar.url
-									? "Não é possível alterar a foto pois o usuário já possuí uma"
-									: "clique para alterar sua foto"
-							}
+							className="flex size-full items-center justify-center border rounded-full hover:cursor-pointer hover:bg-muted"
+							title="clique para alterar sua foto"
 						>
 							<AvatarImage src={avatarURL} className="object-cover" />
 							<AvatarFallback className="text-2xl font-semibold">
@@ -170,20 +181,19 @@ export function ModalEditUser({
 							id="avatar"
 							type="file"
 							className="sr-only"
-							disabled={user.avatar.url !== "http://localhost:3000/"}
 							accept="image/png, image/jpeg"
 						/>
 					</Label>
 
 					<div>
 						<Label htmlFor="name">Nome</Label>
-						<Input id="name" {...register("name")} placeholder="John joe" />
+						<Input id="name" placeholder="John joe" {...register("name")} />
 					</div>
 					<div>
 						<Label htmlFor="email">Email</Label>
 						<Input
-							{...register("email")}
 							id="email"
+							{...register("email")}
 							placeholder="johndoe@gmail.com"
 						/>
 					</div>
@@ -198,18 +208,24 @@ export function ModalEditUser({
 						/>
 					</div>
 					<div>
-						<Select
-							defaultValue={user.role}
-							onValueChange={(value) => {
-								form.setValue("role", value as never);
-							}}
-						>
+						<Label htmlFor="password">Senha</Label>
+						<Input
+							{...register("password")}
+							id="password"
+							placeholder="*****"
+							type="password"
+						/>
+					</div>
+					<div>
+						<Select onValueChange={(value) => setValue("role", value as never)}>
 							<SelectTrigger className="text-xs">
 								<SelectValue placeholder="Selecione uma regra" />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectGroup>
-									<SelectLabel>Selecione uma regra</SelectLabel>
+									<SelectLabel className="text-xs">
+										Selecione uma regra
+									</SelectLabel>
 									<SelectItem value="EDIT" className="text-xs">
 										Apenas Edição
 									</SelectItem>
@@ -225,14 +241,13 @@ export function ModalEditUser({
 					</div>
 				</form>
 				<DialogFooter className="mt-4">
+					<DialogClose asChild>
+						<Button className="bg-red-500 text-zinc-100 hover:bg-red-400 hover:text-zinc-950">
+							Cancelar
+						</Button>
+					</DialogClose>
 					<Button
-						className="bg-red-500 text-zinc-100 hover:bg-red-400 hover:text-zinc-950"
-						onClick={() => setOpen(false)}
-					>
-						Cancelar
-					</Button>
-					<Button
-						onClick={handleSubmit}
+						onClick={() => handleSubmit()}
 						className="bg-emerald-500 text-zinc-100 hover:bg-emerald-400 hover:text-zinc-950"
 					>
 						Confirmar

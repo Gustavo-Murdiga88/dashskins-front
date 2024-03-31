@@ -1,12 +1,49 @@
+import { AxiosError } from "axios";
 import { ArrowLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/axios";
+
+import { FormData, resolver } from "./validation";
 
 export function Signup() {
 	const navigate = useNavigate();
+
+	const form = useForm<FormData>({
+		resolver,
+	});
+
+	const { register } = form;
+
+	async function handleSubmit(data: FormData) {
+		try {
+			const userCreated = await api.post("/account", {
+				email: data.email,
+				age: data.age,
+				password: data.password,
+				role: data.role,
+				name: data.name,
+			});
+
+			if (userCreated.status === 201) {
+				toast.success(
+					"Usuário criado com sucesso! Você está sendo redirecionado para a tela de login",
+				);
+
+				navigate("/signin");
+			}
+		} catch (error) {
+			if (error instanceof AxiosError) {
+				toast.error(error.response?.data.message);
+			}
+		}
+	}
+
 	return (
 		<div className="border-r-[0.125rem] p-4 flex flex-col items-center justify-center bg-zinc-1000 relative">
 			<button
@@ -27,28 +64,35 @@ export function Signup() {
 						</span>
 					</h1>
 				</header>
-				<form className="w-full flex flex-col gap-4">
+				<form
+					onSubmit={form.handleSubmit(handleSubmit)}
+					className="w-full flex flex-col gap-4"
+				>
 					<Label htmlFor="name">Nome</Label>
 					<Input
 						id="name"
+						{...register("name")}
 						placeholder="John joe"
 						className="bg-foreground/[0.026]"
 					/>
 					<Label htmlFor="email">Email</Label>
 					<Input
 						id="email"
+						{...register("email")}
 						placeholder="johndoe@gmail.com"
 						className="bg-foreground/[0.026]"
 					/>
 					<Label htmlFor="age">Idade</Label>
 					<Input
 						id="age"
+						{...register("age")}
 						placeholder="insira sua sua senha"
 						className="bg-foreground/[0.026]"
 					/>
 					<Label htmlFor="password">Senha</Label>
 					<Input
 						id="password"
+						{...register("password")}
 						placeholder="insira sua sua senha"
 						className="bg-foreground/[0.026]"
 					/>

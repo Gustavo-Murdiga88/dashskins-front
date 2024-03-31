@@ -1,3 +1,4 @@
+import Cookie from "js-cookie";
 import { createBrowserRouter, redirect } from "react-router-dom";
 
 import { Signin } from "@/pages/singin";
@@ -9,11 +10,27 @@ import { Signup } from "./pages/signup";
 export const routes = createBrowserRouter([
 	{
 		path: "/",
-		loader: () => redirect("/signin"),
+		loader: () => {
+			const authCookie = Cookie.get("@dashskins:token");
+
+			if (authCookie) {
+				return redirect("/dashboard");
+			}
+
+			return redirect("/signin");
+		},
 	},
 	{
 		path: "/signin",
 		element: <Root />,
+		loader: () => {
+			const authCookie = Cookie.get("@dashskins:token");
+
+			if (authCookie) {
+				return redirect("/dashboard");
+			}
+			return null;
+		},
 		children: [
 			{
 				path: "/signin",
@@ -24,6 +41,14 @@ export const routes = createBrowserRouter([
 	{
 		path: "/signup",
 		element: <Root />,
+		loader: () => {
+			const authCookie = Cookie.get("@dashskins:token");
+
+			if (authCookie) {
+				return redirect("/dashboard");
+			}
+			return null;
+		},
 		children: [
 			{
 				path: "/signup",

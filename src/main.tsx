@@ -1,13 +1,16 @@
 import "./global.css";
 
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
+import { Toaster } from "sonner";
 
 import { routes } from "./routes";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-	<React.StrictMode>
+	// <React.StrictMode>
+	<>
 		<RouterProvider router={routes} />
-	</React.StrictMode>,
+		<Toaster />
+	</>,
+	// </React.StrictMode>,
 );

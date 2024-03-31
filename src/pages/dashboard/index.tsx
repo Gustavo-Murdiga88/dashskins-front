@@ -1,67 +1,36 @@
-import { ChevronDown, ChevronUp, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { useRef } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { UserProps } from "@/api/user-from-database";
 
 import { Filter } from "./organisms/filter";
-import { Pagination } from "./organisms/pagination";
-import { Table } from "./organisms/table";
+import { Header } from "./organisms/header";
+import { Table, TableRef } from "./organisms/table";
+
+type UserCookieProps = {
+	email: string;
+	id: string;
+	name: string;
+	avatarURL: string;
+};
 
 export function Dashboard() {
-	const navigate = useNavigate();
-	function logout() {
-		navigate("/signin");
+	const userCookie = Cookies.get("@dashskins:user");
+	const user: UserCookieProps = userCookie ? JSON.parse(userCookie) : undefined;
+
+	const tableRef = useRef<TableRef>(null);
+
+	function callbackUser({ user }: { user: UserProps }) {
+		tableRef.current?.callback({ user });
 	}
 
 	return (
 		<main className="max-w-[77.5rem] mx-auto">
-			<header className="pb-2 pt-4 px-5 border-b flex justify-between items-center">
-				<img
-					loading="lazy"
-					decoding="async"
-					className="my-3 max-h-[50px] object-cover"
-					src="https://dashskins.com.br/logo.png"
-					alt="dash skins logos"
-				/>
-
-				<div className="flex gap-2 h-full items-center">
-					<Avatar className="mr-2">
-						<AvatarImage src="https://github.com/gustavo-murdiga88.png" />
-						<AvatarFallback>GM</AvatarFallback>
-					</Avatar>
-					<div className="min-w-[2px] min-h-[20px] bg-muted rounded-sm" />
-					<DropdownMenu>
-						<DropdownMenuTrigger className="group">
-							<strong>
-								Gustavo Murdiga
-								<ChevronDown className="group-data-[state=open]:inline-block group-data-[state=closed]:hidden ml-2" />
-								<ChevronUp className="group-data-[state=open]:hidden group-data-[state=closed]:inline-block ml-2" />
-							</strong>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem
-								onClick={logout}
-								className="flex items-center justify-between text-xs font-semibold"
-							>
-								Logout <LogOut size={16} />
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</header>
-
+			<Header user={user} />
 			<section>
-				<Filter />
-				<Table />
-				<Pagination currentPage={1} itemsPerPage={10} totalOfItems={100} />
+				<Filter callback={callbackUser} />
 
-				{/* <Loading /> */}
+				<Table ref={tableRef} userLoggedId={user!.id} />
 			</section>
 		</main>
 	);
