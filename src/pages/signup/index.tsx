@@ -18,7 +18,10 @@ export function Signup() {
 		resolver,
 	});
 
-	const { register } = form;
+	const {
+		register,
+		formState: { isSubmitting, errors },
+	} = form;
 
 	async function handleSubmit(data: FormData) {
 		try {
@@ -74,28 +77,44 @@ export function Signup() {
 						{...register("name")}
 						placeholder="John joe"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.name?.message}
+					</p>
 					<Label htmlFor="email">Email</Label>
 					<Input
 						id="email"
 						{...register("email")}
 						placeholder="johndoe@gmail.com"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.email?.message}
+					</p>
 					<Label htmlFor="age">Idade</Label>
 					<Input
 						id="age"
 						{...register("age")}
 						placeholder="insira sua sua senha"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.age?.message}
+					</p>
 					<Label htmlFor="password">Senha</Label>
 					<Input
 						id="password"
 						{...register("password")}
 						placeholder="insira sua sua senha"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.password?.message}
+					</p>
 					<Button
 						className="w-full bg-purple-800 border border-purple-700 hover:bg-purple-600 mt-5"
 						variant="outline"

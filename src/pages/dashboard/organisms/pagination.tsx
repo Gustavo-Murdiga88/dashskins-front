@@ -4,7 +4,7 @@ import {
 	ChevronsLeft,
 	ChevronsRight,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 

@@ -1,14 +1,13 @@
 import { AxiosError } from "axios";
-import Cookie from "js-cookie";
-import { jwtDecode } from "jwt-decode";
+import { Loader } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { createSession } from "@/api/create-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/axios";
 
 import { FormData, resolver } from "./validation";
 
@@ -18,51 +17,17 @@ export function Signin() {
 		resolver,
 	});
 
-	const { register } = form;
+	const {
+		register,
+		formState: { errors, isSubmitting },
+	} = form;
 
 	async function handleSubmit(data: FormData) {
 		try {
-			const authResponse = await api.post<{
-				token: string;
-				refreshToken: string;
-			}>("/session", {
+			await createSession({
 				email: data.email,
 				password: data.password,
 			});
-
-			const { refreshToken, token } = authResponse.data;
-
-			Cookie.set("@dashskins:token", token, {
-				path: "/",
-				expires: 60 * 60 * 24 * 30,
-			});
-
-			Cookie.set("@dashskins:refreshToken", refreshToken, {
-				path: "/",
-				expires: 60 * 60 * 24 * 30, // 30 days
-			});
-
-			api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
-			const { email, id, name, avatarURL } = jwtDecode(token) as {
-				id: string;
-				email: string;
-				name: string;
-				avatarURL: string;
-			};
-
-			toast.success(
-				`Bem vindo ao sistema, ${name}! Tenha uma ótima experiência!`,
-			);
-
-			Cookie.set(
-				"@dashskins:user",
-				JSON.stringify({ email, id, name, avatarURL }),
-				{
-					path: "/",
-					expires: 60 * 60 * 24 * 30, // 30 days
-				},
-			);
 
 			navigate("/dashboard");
 		} catch (err) {
@@ -99,20 +64,34 @@ export function Signin() {
 						id="email"
 						placeholder="johndoe@gmail.com"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 						{...register("email")}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.email?.message}
+					</p>
 					<Label htmlFor="password">Senha</Label>
 					<Input
 						id="password"
 						placeholder="insira sua sua senha"
 						className="bg-foreground/[0.026]"
+						disabled={isSubmitting}
 						{...register("password")}
 					/>
+					<p className="text-red-500 text-xs font-semibold">
+						{errors.password?.message}
+					</p>
 					<Button
+						disabled={isSubmitting}
 						className="w-full bg-purple-800 border border-purple-700 hover:bg-purple-600 mt-5"
 						variant="outline"
 					>
 						Entrar
+						<Loader
+							data-loading={isSubmitting}
+							size={16}
+							className="animate-spin data-[loading=false]:hidden ml-2"
+						/>
 					</Button>
 
 					<footer className="text-xs text-foreground">

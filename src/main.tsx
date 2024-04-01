@@ -10,7 +10,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 	// <React.StrictMode>
 	<>
 		<RouterProvider router={routes} />
-		<Toaster />
+		<Toaster
+			toastOptions={{
+				classNames: {
+					toast: "bg-emerald-400",
+					title: "text-zinc-950",
+					description: "text-zinc-950",
+					icon: "text-zinc-950",
+				},
+			}}
+		/>
 	</>,
 	// </React.StrictMode>,
 );

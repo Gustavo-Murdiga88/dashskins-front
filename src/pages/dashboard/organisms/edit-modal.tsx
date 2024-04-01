@@ -1,9 +1,12 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { Label } from "@radix-ui/react-label";
+import { Loader } from "lucide-react";
 import { ChangeEvent, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { sendAvatarToDatabase } from "@/api/send-avatar";
+import { UpdateUserToDataBase } from "@/api/update-user";
 import { UserProps } from "@/api/user-from-database";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,7 +28,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/axios";
+import { env } from "@/env/env";
+import { userStore } from "@/store/user-store";
 
 import { resolver, SchemeUpdatedUser } from "../validation/update-user";
 
@@ -41,6 +45,12 @@ export function ModalEditUser({
 	user,
 	callback,
 }: IModalEditProps) {
+	const { currentUser, setAvatarURLState, setUser } = userStore((state) => ({
+		currentUser: state.user,
+		setAvatarURLState: state.setAvatarURL,
+		setUser: state.setUser,
+	}));
+
 	const [avatarURL, setAvatarURL] = useState(user.avatar.url ?? "");
 	const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
 
@@ -54,27 +64,10 @@ export function ModalEditUser({
 		},
 	});
 
-	const { register } = form;
-
-	async function sendAvatar(userId: string) {
-		const data = new FormData();
-
-		data.append("file", avatarFile!);
-
-		try {
-			const avatarCreated = await api.post<{ url: string; id: string }>(
-				`/user/avatar/${userId}`,
-				data,
-			);
-			return {
-				url: `http://localhost:3000/${avatarCreated.data.url}`,
-				id: avatarCreated.data.id,
-			};
-		} catch (err) {
-			toast.error("Erro ao enviar imagem");
-			return null;
-		}
-	}
+	const {
+		register,
+		formState: { errors, isSubmitting },
+	} = form;
 
 	function handleChangeFile(e: ChangeEvent<HTMLInputElement>) {
 		const file = e.currentTarget.files?.[0];
@@ -90,50 +83,66 @@ export function ModalEditUser({
 
 	const handleSubmit = form.handleSubmit(async ({ age, email, name, role }) => {
 		try {
-			const userEdited = await api.put<{ message: string }>("/user", {
-				id: user.id,
-				email,
-				name,
+			const userEdited = await UpdateUserToDataBase({
 				age,
+				email,
+				id: user.id,
+				name,
 				role,
 			});
 
-			toast.success(userEdited.data.message);
+			if (!userEdited) {
+				return;
+			}
+
+			if (user.id === currentUser.id) {
+				setUser({
+					...currentUser,
+					email,
+					name,
+				});
+			}
+
+			toast.success("Usuário atualizado com sucesso");
 			setOpen(false);
+
+			const userToDatabase: UserProps = {
+				age,
+				email,
+				isNew: false,
+				id: user.id,
+				avatar: user.avatar,
+				name,
+				role,
+			};
 
 			if (avatarFile === undefined) {
 				callback?.({
-					user: {
-						age,
-						email,
-						id: user.id,
-						avatar: user.avatar,
-						name,
-						role,
-					},
+					user: userToDatabase,
 				});
 				return;
 			}
 
-			const avatarCreated = await sendAvatar(user.id);
+			const avatarCreated = await sendAvatarToDatabase({
+				avatar: avatarFile,
+				userId: user.id,
+			});
+
+			if (currentUser.id === user.id && avatarCreated) {
+				setAvatarURLState(avatarCreated.url);
+			}
 
 			URL.revokeObjectURL(avatarURL);
-			setAvatarURL("");
+			setAvatarURL(avatarCreated?.url || "");
 			setAvatarFile(undefined);
+
+			userToDatabase.avatar = {
+				url: avatarCreated?.url || user.avatar.url,
+				id: avatarCreated?.id || user.avatar.id,
+				userId: user.id,
+			};
 			callback?.({
-				user: {
-					age,
-					email,
-					name,
-					role,
-					id: user.id,
-					avatar: {
-						...user.avatar,
-						url: avatarCreated?.url || user.avatar.url,
-						id: avatarCreated?.id || user.avatar.id,
-						userId: user.id,
-					},
-				},
+				user: userToDatabase,
 			});
 		} catch (error) {
 			toast.error("Erro ao atualizar o usuário");
@@ -152,7 +161,7 @@ export function ModalEditUser({
 				<form className="flex flex-col gap-4 text-xs">
 					<Label htmlFor="avatar">
 						<Avatar
-							data-disabled={user.avatar.url !== "http://localhost:3000/"}
+							data-disabled={user.avatar.url !== env.VITE_SERVER_URL}
 							className="data-[disabled=true]:cursor-not-allowed h-32 w-32 mx-auto flex items-center justify-center border rounded-full hover:cursor-pointer hover:bg-muted"
 							title={
 								user.avatar.url
@@ -170,14 +179,22 @@ export function ModalEditUser({
 							id="avatar"
 							type="file"
 							className="sr-only"
-							disabled={user.avatar.url !== "http://localhost:3000/"}
+							disabled={user.avatar.url !== env.VITE_SERVER_URL}
 							accept="image/png, image/jpeg"
 						/>
 					</Label>
 
 					<div>
 						<Label htmlFor="name">Nome</Label>
-						<Input id="name" {...register("name")} placeholder="John joe" />
+						<Input
+							id="name"
+							{...register("name")}
+							placeholder="John joe"
+							disabled={isSubmitting}
+						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.name?.message}
+						</p>
 					</div>
 					<div>
 						<Label htmlFor="email">Email</Label>
@@ -185,7 +202,11 @@ export function ModalEditUser({
 							{...register("email")}
 							id="email"
 							placeholder="johndoe@gmail.com"
+							disabled={isSubmitting}
 						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.email?.message}
+						</p>
 					</div>
 					<div>
 						<Label htmlFor="age">Idade</Label>
@@ -195,7 +216,11 @@ export function ModalEditUser({
 							placeholder="30"
 							type="number"
 							maxLength={3}
+							disabled={isSubmitting}
 						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.name?.message}
+						</p>
 					</div>
 					<div>
 						<Select
@@ -222,9 +247,12 @@ export function ModalEditUser({
 								</SelectGroup>
 							</SelectContent>
 						</Select>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.role?.message}
+						</p>
 					</div>
 				</form>
-				<DialogFooter className="mt-4">
+				<DialogFooter className="mt-4 flex flex-col gap-4 md:flex-row">
 					<Button
 						className="bg-red-500 text-zinc-100 hover:bg-red-400 hover:text-zinc-950"
 						onClick={() => setOpen(false)}
@@ -236,6 +264,11 @@ export function ModalEditUser({
 						className="bg-emerald-500 text-zinc-100 hover:bg-emerald-400 hover:text-zinc-950"
 					>
 						Confirmar
+						<Loader
+							data-loading={isSubmitting}
+							size={16}
+							className="animate-spin data-[loading=false]:hidden ml-2"
+						/>
 					</Button>
 				</DialogFooter>
 			</DialogContent>

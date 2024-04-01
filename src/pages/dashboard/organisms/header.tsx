@@ -9,23 +9,26 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { env } from "@/env/env";
+import { userStore } from "@/store/user-store";
 
-interface IHeaderProps {
-	user: { email: string; id: string; name: string; avatarURL: string };
-}
-export function Header({ user }: IHeaderProps) {
+export function Header() {
+	const user = userStore((state) => state.user);
+
 	const navigate = useNavigate();
 	function logout() {
-		Cookies.remove("@dashskins:token");
-		Cookies.remove("@dashskins:refreshToken");
+		Cookies.remove(env.VITE_TOKEN_KEY);
+		Cookies.remove(env.VITE_REFRESH_TOKEN_KEY);
 
 		navigate("/signin");
 	}
 
-	const [firstName, lastName] = user ? user.name.split(" ") : ["J", "D"];
+	const [firstName = "J", lastName = "D"] = user
+		? user.name.split(" ")
+		: ["J", "D"];
 
 	return (
-		<header className="pb-2 pt-4 px-5 border-b flex justify-between items-center">
+		<header className="pb-2 pt-4 px-5 border-b flex flex-col md:flex-row md:justify-between items-center">
 			<img
 				loading="lazy"
 				decoding="async"
@@ -34,10 +37,10 @@ export function Header({ user }: IHeaderProps) {
 				alt="dash skins logos"
 			/>
 
-			<div className="flex gap-2 h-full items-center">
+			<div className="flex gap-2 h-full md:items-center my-3 md:my-0 ">
 				<Avatar className="mr-2">
-					<AvatarImage src={`http://localhost:3000/${user?.avatarURL}`} />
-					<AvatarFallback>
+					<AvatarImage src={user.avatarURL} />
+					<AvatarFallback className="uppercase">
 						{firstName[0]}
 						{lastName[0]}
 					</AvatarFallback>
@@ -45,7 +48,7 @@ export function Header({ user }: IHeaderProps) {
 				<div className="min-w-[2px] min-h-[20px] bg-muted rounded-sm" />
 				<DropdownMenu>
 					<DropdownMenuTrigger className="group">
-						<strong>
+						<strong className="capitalize">
 							{user?.name ?? "John Doe"}
 							<ChevronDown className="group-data-[state=open]:inline-block group-data-[state=closed]:hidden ml-2" />
 							<ChevronUp className="group-data-[state=open]:hidden group-data-[state=closed]:inline-block ml-2" />

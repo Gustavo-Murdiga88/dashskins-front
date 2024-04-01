@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import * as React from "react";
 

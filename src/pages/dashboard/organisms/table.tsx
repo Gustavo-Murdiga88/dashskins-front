@@ -104,30 +104,33 @@ export const Table = forwardRef<TableRef, ITableProps>(
 
 		return (
 			<>
-				<table className="w-full text-center text-xs mt-10 table-fixed border-separate border-spacing-y-2">
-					<thead>
-						<tr className="[&_:is(th)]:border-y [&_:is(th)]:hover:bg-muted [&_:is(th)]:transition-colors [&_:is(th:first-child)]:rounded-s-lg [&_:is(th:last-child)]:rounded-e-lg [&_:is(th:first-child)]:border-l [&_:is(th:last-child)]:border-r">
-							<th className="p-3">Avatar</th>
-							<th className="p-3">Nome</th>
-							<th className="p-3">Email</th>
-							<th className="p-3">idade</th>
-							<th className="p-3">Regra</th>
-							<th aria-label="control" className="w-[3.75rem]" />
-						</tr>
-					</thead>
-					<tbody>
-						{listUser.data.map((user, index) => (
-							<TableRow
-								index={index}
-								update={updateUser}
-								deleteCallback={deleterUser}
-								user={user}
-								key={user.id}
-								userLoggedId={userLoggedId}
-							/>
-						))}
-					</tbody>
-				</table>
+				<div className="overflow-x-auto w-full">
+					<table className="w-full text-center text-xs mt-10 table-fixed border-separate border-spacing-y-2 min-w-[860px]">
+						<thead>
+							<tr className="[&_:is(th)]:border-y [&_:is(th)]:hover:bg-muted [&_:is(th)]:transition-colors [&_:is(th:first-child)]:rounded-s-lg [&_:is(th:last-child)]:rounded-e-lg [&_:is(th:first-child)]:border-l [&_:is(th:last-child)]:border-r">
+								<th className="p-3">Avatar</th>
+								<th className="p-3">Nome</th>
+								<th className="p-3">Email</th>
+								<th className="p-3">idade</th>
+								<th className="p-3">Regra</th>
+								<th aria-label="control" className="w-[3.75rem]" />
+							</tr>
+						</thead>
+						<tbody>
+							{listUser.data.map((user, index) => (
+								<TableRow
+									isNew={user.isNew}
+									index={index}
+									update={updateUser}
+									deleteCallback={deleterUser}
+									user={user}
+									key={user.id}
+									userLoggedId={userLoggedId}
+								/>
+							))}
+						</tbody>
+					</table>
+				</div>
 				<Pagination
 					currentPage={Number(page) || 1}
 					itemsPerPage={10}

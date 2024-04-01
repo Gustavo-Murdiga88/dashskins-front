@@ -1,10 +1,13 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Label } from "@radix-ui/react-label";
+import { Loader } from "lucide-react";
 import { ChangeEvent, ElementRef, ReactNode, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { CreateUserToDataBase } from "@/api/create-user";
+import { sendAvatarToDatabase } from "@/api/send-avatar";
 import { UserProps } from "@/api/user-from-database";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -27,7 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/axios";
+import { env } from "@/env/env";
 
 import { resolver, SchemeCreateUser } from "../validation/create-user";
 
@@ -43,101 +46,82 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 
 	const form = useForm<SchemeCreateUser>({
 		resolver,
+		defaultValues: {
+			age: "",
+			email: "",
+			name: "",
+			password: "",
+		} as never,
 	});
 
-	const { register, setValue } = form;
-
-	async function sendAvatar(userId: string) {
-		const data = new FormData();
-
-		data.append("file", avatarFile!);
-
-		try {
-			const avatarCreated = await api.post<{ url: string; id: string }>(
-				`/user/avatar/${userId}`,
-				data,
-			);
-
-			return {
-				url: `http://localhost:3000/${avatarCreated.data.url}`,
-				id: avatarCreated.data.id,
-			};
-		} catch (err) {
-			toast.error("Erro ao enviar imagem");
-			return null;
-		}
-	}
+	const {
+		register,
+		setValue,
+		formState: { errors, isSubmitting },
+	} = form;
 
 	const handleSubmit = form.handleSubmit(
 		async ({ age, email, name, role, password }) => {
-			try {
-				const userCreated = await api.post<{ user: UserProps }>("/user", {
-					email,
-					name,
-					age,
-					role,
-					password,
-				});
+			const { status, user: userCreated } = await CreateUserToDataBase({
+				age,
+				email,
+				name,
+				password,
+				role,
+			});
 
-				if (userCreated.status !== 201) {
-					return;
-				}
-
-				if (avatarFile === undefined) {
-					callback?.({
-						user: {
-							age,
-							email,
-							name,
-							role,
-							id: userCreated.data.user.id,
-							avatar: {
-								id: userCreated.data.user.avatar.id,
-								userId: userCreated.data.user.id,
-								url:
-									userCreated.data.user.avatar.url || "http://localhost:3000",
-							},
-						},
-					});
-					triggerRef.current?.click();
-					return;
-				}
-
-				const { id } = userCreated.data.user;
-				const avatarCreated = await sendAvatar(id);
-
-				triggerRef.current?.click();
-
-				toast.success("Usuários criado com sucesso");
-				form.reset({
-					age: "",
-					email: "",
-					name: "",
-					password: "",
-					role: "",
-				} as never);
-
-				URL.revokeObjectURL(avatarURL);
-				setAvatarURL("");
-				setAvatarFile(undefined);
-				callback?.({
-					user: {
-						age,
-						email,
-						name,
-						role,
-						id: userCreated.data.user.id,
-						avatar: {
-							id: avatarCreated?.id || userCreated.data.user.avatar.id,
-							userId: userCreated.data.user.id,
-							url: avatarCreated?.url || userCreated.data.user.avatar.url,
-						},
-					},
-				});
-				triggerRef.current?.click();
-			} catch (error) {
-				toast.error("Erro ao criar o novo usuário");
+			if (status !== 201) {
+				return;
 			}
+
+			const userToDatabase: UserProps = {
+				...userCreated!,
+				isNew: true,
+				avatar: {
+					id: userCreated!.avatar.id,
+					userId: userCreated!.id,
+					url: userCreated!.avatar.url || env.VITE_SERVER_URL,
+				},
+			};
+
+			if (avatarFile === undefined) {
+				callback?.({
+					user: userToDatabase,
+				});
+
+				toast.success("Usuário criado com sucesso");
+				form.reset();
+				triggerRef.current?.click();
+				return;
+			}
+
+			const { id } = userCreated!;
+			const avatarCreated = await sendAvatarToDatabase({
+				avatar: avatarFile,
+				userId: id,
+			});
+
+			if (!avatarCreated) {
+				return;
+			}
+
+			callback?.({
+				user: {
+					...userToDatabase,
+					avatar: {
+						id: avatarCreated?.id || userCreated!.avatar.id,
+						userId: userCreated!.id,
+						url: avatarCreated?.url || userCreated!.avatar.url,
+					},
+				},
+			});
+			toast.success("Usuários criado com sucesso");
+			triggerRef.current?.click();
+
+			form.reset();
+			URL.revokeObjectURL(avatarURL);
+			setAvatarURL("");
+			setAvatarFile(undefined);
 		},
 	);
 
@@ -160,9 +144,9 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Edição de usuários</DialogTitle>
+					<DialogTitle>Criar novos usuários</DialogTitle>
 					<DialogDescription className="text-xs font-semibold">
-						Aqui você poderá editar algumas de suas informações
+						Aqui você poderá criar novos usuários
 					</DialogDescription>
 				</DialogHeader>
 				<form className="flex flex-col gap-4 text-xs">
@@ -173,7 +157,7 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 						>
 							<AvatarImage src={avatarURL} className="object-cover" />
 							<AvatarFallback className="text-2xl font-semibold">
-								GM
+								DS
 							</AvatarFallback>
 						</Avatar>
 						<input
@@ -187,7 +171,15 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 
 					<div>
 						<Label htmlFor="name">Nome</Label>
-						<Input id="name" placeholder="John joe" {...register("name")} />
+						<Input
+							id="name"
+							placeholder="John joe"
+							{...register("name")}
+							disabled={isSubmitting}
+						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.name?.message}
+						</p>
 					</div>
 					<div>
 						<Label htmlFor="email">Email</Label>
@@ -195,7 +187,11 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 							id="email"
 							{...register("email")}
 							placeholder="johndoe@gmail.com"
+							disabled={isSubmitting}
 						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.email?.message}
+						</p>
 					</div>
 					<div>
 						<Label htmlFor="age">Idade</Label>
@@ -205,7 +201,11 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 							placeholder="30"
 							type="number"
 							maxLength={3}
+							disabled={isSubmitting}
 						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.age?.message}
+						</p>
 					</div>
 					<div>
 						<Label htmlFor="password">Senha</Label>
@@ -214,7 +214,11 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 							id="password"
 							placeholder="*****"
 							type="password"
+							disabled={isSubmitting}
 						/>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.password?.message}
+						</p>
 					</div>
 					<div>
 						<Select onValueChange={(value) => setValue("role", value as never)}>
@@ -238,19 +242,28 @@ export function CreateModal({ children, callback }: IModalEditProps) {
 								</SelectGroup>
 							</SelectContent>
 						</Select>
+						<p className="text-red-500 font-semibold mt-1">
+							{errors.role?.message}
+						</p>
 					</div>
 				</form>
-				<DialogFooter className="mt-4">
+				<DialogFooter className="mt-4 flex flex-col gap-4 md:flex-row">
 					<DialogClose asChild>
 						<Button className="bg-red-500 text-zinc-100 hover:bg-red-400 hover:text-zinc-950">
 							Cancelar
 						</Button>
 					</DialogClose>
 					<Button
+						disabled={isSubmitting}
 						onClick={() => handleSubmit()}
 						className="bg-emerald-500 text-zinc-100 hover:bg-emerald-400 hover:text-zinc-950"
 					>
 						Confirmar
+						<Loader
+							data-loading={isSubmitting}
+							size={16}
+							className="animate-spin data-[loading=false]:hidden ml-2"
+						/>
 					</Button>
 				</DialogFooter>
 			</DialogContent>

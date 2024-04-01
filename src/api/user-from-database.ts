@@ -1,3 +1,4 @@
+import { env } from "@/env/env";
 import { api } from "@/lib/axios";
 
 export type UserProps = {
@@ -6,6 +7,7 @@ export type UserProps = {
 	id: string;
 	name: string;
 	role: "ALL" | "DELETE" | "EDIT";
+	isNew: boolean;
 	avatar: {
 		url: string;
 		id: string;
@@ -37,9 +39,10 @@ export async function getUsers({
 		totalElements: users.data.totalElements,
 		data: users.data.data.map((user) => ({
 			...user,
+			isNew: false,
 			avatar: {
 				...user.avatar,
-				url: `http://localhost:3000/${user.avatar.url}`,
+				url: `${env.VITE_SERVER_URL}/${user.avatar.url}`,
 			},
 		})),
 	};

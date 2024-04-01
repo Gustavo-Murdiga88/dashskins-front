@@ -35,7 +35,7 @@ export function Filter({ callback }: FilterCallback) {
 	return (
 		<section className="mt-10">
 			<form onSubmit={handleSearch}>
-				<div className="mt-4 max-w-[50%] flex items-end gap-4 ml-auto justify-end">
+				<div className="mt-4 md:max-w-[50%] flex flex-col md:flex-row md:items-end gap-4 md:ml-auto md:justify-end">
 					<div>
 						<h1 className="text-md font-semibold">
 							Filtre pelo nome do usuário

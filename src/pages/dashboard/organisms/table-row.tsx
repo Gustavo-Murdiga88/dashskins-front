@@ -1,8 +1,15 @@
 import { AvatarFallback } from "@radix-ui/react-avatar";
 import { Edit, MoreVertical, Trash } from "lucide-react";
-import { useCallback, useState } from "react";
+import {
+	ComponentRef,
+	useCallback,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
 
+import { DeleteUser } from "@/api/delete-user";
 import { UserProps } from "@/api/user-from-database";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -11,7 +18,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { api } from "@/lib/axios";
 
 import { AlertModal } from "./alert";
 import { ModalEditUser } from "./edit-modal";
@@ -22,6 +28,7 @@ interface ITableRowProps {
 	deleteCallback: ({ index }: { index: number }) => void;
 	update: ({ user, index }: { user: UserProps; index: number }) => void;
 	index: number;
+	isNew: boolean;
 }
 export function TableRow({
 	user,
@@ -29,26 +36,65 @@ export function TableRow({
 	deleteCallback,
 	update,
 	index,
+	isNew,
 }: ITableRowProps) {
 	const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
 	const [modalEditOpen, setModalEditOpen] = useState(false);
 
+	const refTr = useRef<ComponentRef<"tr">>(null);
+
 	const deleteUser = useCallback(
 		async ({ index }: { index: number }) => {
-			try {
-				deleteCallback?.({ index });
+			const response = await DeleteUser(user.id);
 
-				const userDeleted = await api.delete<{ message: string }>(
-					`/user/${user.id}`,
-				);
-
-				toast.success(userDeleted.data.message);
-			} catch (error) {
-				toast.error("Erro ao deletar usuário");
+			if (!response) {
+				return;
 			}
+
+			toast.success("Usuário deletado com sucesso");
+			deleteCallback?.({ index });
 		},
 		[deleteCallback, user.id],
 	);
+
+	function initAnimateForDeleteRow() {
+		if (!refTr.current) {
+			return;
+		}
+
+		if (refTr.current.classList.contains("animate-create-row")) {
+			refTr.current.classList.replace(
+				"animate-create-row",
+				"animate-delete-row",
+			);
+		} else {
+			refTr.current.classList.add("animate-delete-row");
+		}
+		refTr.current.onanimationend = () => {
+			deleteUser({ index });
+		};
+	}
+
+	const initAnimateForNewRow = useCallback(() => {
+		if (!refTr.current) return;
+
+		if (isNew && refTr.current.classList.contains("animate-delete-row")) {
+			refTr.current.classList.replace(
+				"animate-delete-row",
+				"animate-created-row",
+			);
+			refTr.current.onanimationend = () => {
+				refTr.current?.classList.remove("animate-created-row");
+			};
+		}
+
+		if (isNew) {
+			refTr.current.classList.add("animate-created-row");
+			refTr.current.onanimationend = () => {
+				refTr.current?.classList.remove("animate-created-row");
+			};
+		}
+	}, [isNew]);
 
 	const updateUser = useCallback(
 		({ user, index }: { user: UserProps; index: number }) => {
@@ -57,10 +103,15 @@ export function TableRow({
 		[update],
 	);
 
+	useLayoutEffect(() => {
+		initAnimateForNewRow();
+	}, [initAnimateForNewRow]);
+
 	return (
 		<tr
+			ref={refTr}
 			data-isuserlogged={user.id === userLoggedId}
-			className="group [&_:is(td)]:border-y [&_:is(td)]:hover:bg-muted [&_:is(td)]:transition-colors [&_:is(td:first-child)]:rounded-s-lg [&_:is(td:last-child)]:rounded-e-lg [&_:is(td:first-child)]:border-l [&_:is(td:last-child)]:border-r"
+			className="group [&_:is(td)]:border-y overflow-hidden [&_:is(td)]:hover:bg-muted [&_:is(td)]:transition-colors [&_:is(td:first-child)]:rounded-s-lg [&_:is(td:last-child)]:rounded-e-lg [&_:is(td:first-child)]:border-l [&_:is(td:last-child)]:border-r"
 		>
 			<td className="group-data-[isuserlogged=true]:border-emerald-300 py-3 pl-2">
 				<Avatar className="border mx-auto flex items-center justify-center group-hover:border-zinc-500">
@@ -112,7 +163,7 @@ export function TableRow({
 				</div>
 			</td>
 			<AlertModal
-				confirm={() => deleteUser({ index })}
+				confirm={() => initAnimateForDeleteRow()}
 				open={modalDeleteOpen}
 				setOpen={setModalDeleteOpen}
 			/>
