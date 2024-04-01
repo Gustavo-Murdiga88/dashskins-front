@@ -19,27 +19,24 @@
   ```shell
     # gh cli
    gh repo clone Gustavo-Murdiga88/dashskins-front
+   
   ```
   <br>
 
   Em seguida
   
-    ```shell
-
-      bun install
-    
-    ```
+  ```shell
+  bun install
+  ```
   <br>
 
 Então:
 
 renomeie o arquivo **.env.example** para **.env**
 
-    ```shell
-
-      bun run dev
-    
-    ```
+  ```shell
+  bun run dev 
+  ```
 
   
 
