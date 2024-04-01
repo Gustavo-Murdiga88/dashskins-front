@@ -8,8 +8,8 @@
   
   - ReactJS
   - zustand
-  - shad-cnui
-  - react-router-dom
+  - shadcn/ui
+  - react router dom
   - Typescript
   - Eslint
 </p>
